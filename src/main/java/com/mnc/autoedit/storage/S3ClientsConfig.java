@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
@@ -21,7 +22,8 @@ public class S3ClientsConfig {
 
         var builder = S3Client.builder()
                 .credentialsProvider(creds)
-                .region(Region.of(cfg.getRegion() == null || cfg.getRegion().isBlank() ? "auto" : cfg.getRegion()));
+                .region(Region.of(cfg.getRegion() == null || cfg.getRegion().isBlank() ? "auto" : cfg.getRegion()))
+                .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
 
         if (cfg.getEndpoint() != null && !cfg.getEndpoint().isBlank()) {
             builder = builder.endpointOverride(URI.create(cfg.getEndpoint()));
@@ -34,10 +36,14 @@ public class S3ClientsConfig {
         var creds = StaticCredentialsProvider.create(AwsBasicCredentials.create(cfg.getAccessKey(), cfg.getSecretKey()));
         var builder = S3Presigner.builder()
                 .credentialsProvider(creds)
-                .region(Region.of(cfg.getRegion() == null || cfg.getRegion().isBlank() ? "auto" : cfg.getRegion()));
+                .region(Region.of(cfg.getRegion() == null || cfg.getRegion().isBlank() ? "auto" : cfg.getRegion()))
+                .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
 
-        if (cfg.getEndpoint() != null && !cfg.getEndpoint().isBlank()) {
-            builder = builder.endpointOverride(URI.create(cfg.getEndpoint()));
+        String endpoint = (cfg.getPresignEndpoint() != null && !cfg.getPresignEndpoint().isBlank())
+                ? cfg.getPresignEndpoint()
+                : cfg.getEndpoint();
+        if (endpoint != null && !endpoint.isBlank()) {
+            builder = builder.endpointOverride(URI.create(endpoint));
         }
         return builder.build();
     }

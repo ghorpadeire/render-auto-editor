@@ -4,8 +4,6 @@ import com.mnc.autoedit.edit.CutPlan;
 import com.mnc.autoedit.edit.TimeRange;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -40,18 +38,19 @@ public class FfmpegService {
     }
 
     public Path renderFromCutPlan(Path inputMp4, CutPlan plan, Path outputMp4) throws Exception {
-        Path concatFile = outputMp4.getParent().resolve("concat.txt");
-        writeConcatDemuxerFile(concatFile, inputMp4, plan);
-
         List<String> cmd = new ArrayList<>();
         cmd.add(cfg.getFfmpegPath());
         cmd.add("-y");
-        cmd.add("-f");
-        cmd.add("concat");
-        cmd.add("-safe");
-        cmd.add("0");
         cmd.add("-i");
-        cmd.add(concatFile.toString());
+        cmd.add(inputMp4.toString());
+
+        String filter = buildTrimConcatFilter(plan);
+        cmd.add("-filter_complex");
+        cmd.add(filter);
+        cmd.add("-map");
+        cmd.add("[v]");
+        cmd.add("-map");
+        cmd.add("[a]");
         cmd.add("-c:v");
         cmd.add("libx264");
         cmd.add("-preset");
@@ -71,18 +70,29 @@ public class FfmpegService {
         return outputMp4;
     }
 
-    private static void writeConcatDemuxerFile(Path concatFile, Path inputMp4, CutPlan plan) throws Exception {
-        String src = inputMp4.toAbsolutePath().toString().replace("\\", "/");
-        String escaped = src.replace("'", "'\\''");
-        StringBuilder sb = new StringBuilder();
-
-        for (TimeRange r : plan.keepRanges()) {
-            sb.append("file '").append(escaped).append("'\n");
-            sb.append("inpoint ").append(String.format(java.util.Locale.ROOT, "%.3f", r.startSec())).append("\n");
-            sb.append("outpoint ").append(String.format(java.util.Locale.ROOT, "%.3f", r.endSec())).append("\n");
+    private static String buildTrimConcatFilter(CutPlan plan) {
+        if (plan.keepRanges() == null || plan.keepRanges().isEmpty()) {
+            // Produce a 0.5s black/silent clip to avoid ffmpeg errors (edge case).
+            return "color=c=black:s=1280x720:d=0.5[v];anullsrc=r=48000:cl=stereo:d=0.5[a]";
         }
 
-        Files.writeString(concatFile, sb.toString(), StandardCharsets.UTF_8);
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        for (TimeRange r : plan.keepRanges()) {
+            String vs = String.format(java.util.Locale.ROOT, "%.3f", r.startSec());
+            String ve = String.format(java.util.Locale.ROOT, "%.3f", r.endSec());
+            sb.append("[0:v]trim=start=").append(vs).append(":end=").append(ve).append(",setpts=PTS-STARTPTS[v")
+                    .append(i).append("];");
+            sb.append("[0:a]atrim=start=").append(vs).append(":end=").append(ve).append(",asetpts=PTS-STARTPTS[a")
+                    .append(i).append("];");
+            i++;
+        }
+
+        for (int j = 0; j < i; j++) {
+            sb.append("[v").append(j).append("][a").append(j).append("]");
+        }
+        sb.append("concat=n=").append(i).append(":v=1:a=1[v][a]");
+        return sb.toString();
     }
 }
 

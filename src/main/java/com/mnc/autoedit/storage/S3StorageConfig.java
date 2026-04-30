@@ -7,6 +7,7 @@ public class S3StorageConfig {
     private String bucket;
     private String region;
     private String endpoint;
+    private String presignEndpoint;
     private String accessKey;
     private String secretKey;
     private String inputsPrefix = "inputs";
@@ -18,6 +19,8 @@ public class S3StorageConfig {
     public void setRegion(String region) { this.region = region; }
     public String getEndpoint() { return endpoint; }
     public void setEndpoint(String endpoint) { this.endpoint = endpoint; }
+    public String getPresignEndpoint() { return presignEndpoint; }
+    public void setPresignEndpoint(String presignEndpoint) { this.presignEndpoint = presignEndpoint; }
     public String getAccessKey() { return accessKey; }
     public void setAccessKey(String accessKey) { this.accessKey = accessKey; }
     public String getSecretKey() { return secretKey; }

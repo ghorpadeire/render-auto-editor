@@ -56,7 +56,11 @@ public class WhisperService {
 
         Path jsonPath = Path.of(outPrefix + ".json");
         JsonNode root = om.readTree(jsonPath.toFile());
-        return parseWordTimestamps(root);
+        List<WordTimestamp> words = parseWordTimestamps(root);
+        if (words.isEmpty()) {
+            throw new RuntimeException("whisper produced 0 parsed words; json keys=" + root.fieldNames().toString());
+        }
+        return words;
     }
 
     private static List<WordTimestamp> parseWordTimestamps(JsonNode root) {
