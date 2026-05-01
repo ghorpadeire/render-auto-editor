@@ -69,7 +69,14 @@ public class WorkerLoop {
         if (!"worker".equals(role)) {
             return;
         }
+        startLoop();
+    }
 
+    public void forceStart() {
+        startLoop();
+    }
+
+    private void startLoop() {
         Thread t = new Thread(this::runLoop, "worker-loop");
         t.setDaemon(true);
         t.start();
