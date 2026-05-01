@@ -1,5 +1,6 @@
 package com.mnc.autoedit.storage;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -18,6 +19,9 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 @Service
+@ConditionalOnExpression(
+        "'${storage.bucket:}' != '' && '${storage.access-key:}' != '' && '${storage.secret-key:}' != ''"
+)
 public class S3StorageService implements StorageService {
     private final S3Client s3;
     private final S3Presigner presigner;

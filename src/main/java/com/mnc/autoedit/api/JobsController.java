@@ -104,7 +104,12 @@ public class JobsController {
 
         String inputKey = job.inputKey() != null ? job.inputKey() : storageCfg.inputKeyForJob(job.id().toString());
 
-        URL uploadUrl = storage.presignUpload(inputKey, uploadExpiry);
+        final URL uploadUrl;
+        try {
+            uploadUrl = storage.presignUpload(inputKey, uploadExpiry);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
 
         return ResponseEntity.ok(new CreateJobResponse(
                 job.id(),
@@ -136,7 +141,11 @@ public class JobsController {
 
         String downloadUrl = null;
         if (job.status() == JobStatus.SUCCEEDED && job.outputKey() != null) {
-            downloadUrl = storage.presignDownload(job.outputKey(), downloadExpiry).toString();
+            try {
+                downloadUrl = storage.presignDownload(job.outputKey(), downloadExpiry).toString();
+            } catch (IllegalStateException e) {
+                downloadUrl = null;
+            }
         }
 
         return ResponseEntity.ok(new JobStatusResponse(
