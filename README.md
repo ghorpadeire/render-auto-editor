@@ -110,10 +110,28 @@ docker run --rm -e APP_ROLE=worker render-auto-editor:local
 ## Required env vars (Render)
 
 - `APP_ROLE`: `api` or `worker`
-- `JDBC_DATABASE_URL`, `JDBC_DATABASE_USERNAME`, `JDBC_DATABASE_PASSWORD`
+- `DATABASE_URL` (Render Postgres connection string — entrypoint converts it to the `JDBC_DATABASE_*` vars Spring needs)
+  - Or set `JDBC_DATABASE_URL`, `JDBC_DATABASE_USERNAME`, `JDBC_DATABASE_PASSWORD` directly
 - `STORAGE_BUCKET`, `STORAGE_REGION`, `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`
+  - If storage is left blank the app will still start; storage-dependent endpoints return `503` until configured.
 
 Optional:
 
 - `WHISPER_MODEL_URL`, `WHISPER_MODEL_PATH`
+
+## One-click deploy on Render (Blueprint)
+
+This repo ships a `render.yaml` that creates the Postgres DB, the API web service, and the Worker background service in one shot.
+
+1. In Render → **New → Blueprint**, point it at this GitHub repo.
+2. Render reads `render.yaml` and creates:
+   - `render-auto-editor-db` (Postgres)
+   - `render-auto-editor-api` (web)
+   - `render-auto-editor-worker` (background worker)
+3. `DATABASE_URL` is wired automatically from the database to both services.
+4. After the first deploy, open each service → **Environment** and fill the storage secrets:
+   - `STORAGE_BUCKET`, `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`
+   - For Cloudflare R2: `STORAGE_REGION=auto`, `STORAGE_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com`
+   - For AWS S3: `STORAGE_REGION=us-east-1` (or your region), leave `STORAGE_ENDPOINT` blank
+5. Trigger a redeploy on both services. The API exposes `/healthz`; the worker starts polling jobs.
 

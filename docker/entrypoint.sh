@@ -1,6 +1,20 @@
 #!/usr/bin/env sh
 set -eu
 
+# Map Render's DATABASE_URL (postgres://user:pass@host:port/db)
+# to the JDBC_DATABASE_* vars our Spring config expects.
+if [ -n "${DATABASE_URL:-}" ] && [ -z "${JDBC_DATABASE_URL:-}" ]; then
+  proto_stripped=$(printf '%s' "$DATABASE_URL" | sed -E 's#^[a-zA-Z]+://##')
+  creds=$(printf '%s' "$proto_stripped" | sed -E 's#@.*##')
+  hostpart=$(printf '%s' "$proto_stripped" | sed -E 's#^[^@]*@##')
+  user=$(printf '%s' "$creds" | sed -E 's#:.*##')
+  pass=$(printf '%s' "$creds" | sed -E 's#^[^:]*:##')
+  host_port_db=$(printf '%s' "$hostpart" | sed -E 's#\?.*##')
+  export JDBC_DATABASE_URL="jdbc:postgresql://${host_port_db}"
+  export JDBC_DATABASE_USERNAME="$user"
+  export JDBC_DATABASE_PASSWORD="$pass"
+fi
+
 if [ "${APP_ROLE:-api}" = "worker" ]; then
   mkdir -p "$(dirname "${WHISPER_MODEL_PATH}")"
   if [ ! -f "${WHISPER_MODEL_PATH}" ]; then
@@ -10,4 +24,3 @@ if [ "${APP_ROLE:-api}" = "worker" ]; then
 fi
 
 exec java -jar /app/app.jar
-
