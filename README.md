@@ -121,17 +121,23 @@ Optional:
 
 ## One-click deploy on Render (Blueprint)
 
-This repo ships a `render.yaml` that creates the Postgres DB, the API web service, and the Worker background service in one shot.
+This repo ships a `render.yaml` that creates the API web service and the Worker background service. **The Postgres database is currently commented out** in the blueprint so you can verify the deploy works end-to-end first; both services boot in the `nodb` Spring profile and only expose `/healthz`.
 
 1. In Render → **New → Blueprint**, point it at this GitHub repo.
 2. Render reads `render.yaml` and creates:
-   - `render-auto-editor-db` (Postgres)
    - `render-auto-editor-api` (web)
    - `render-auto-editor-worker` (background worker)
-3. `DATABASE_URL` is wired automatically from the database to both services.
-4. After the first deploy, open each service → **Environment** and fill the storage secrets:
+3. After the first deploy, open each service → **Environment** and fill the storage secrets:
    - `STORAGE_BUCKET`, `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`
    - For Cloudflare R2: `STORAGE_REGION=auto`, `STORAGE_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com`
    - For AWS S3: `STORAGE_REGION=us-east-1` (or your region), leave `STORAGE_ENDPOINT` blank
-5. Trigger a redeploy on both services. The API exposes `/healthz`; the worker starts polling jobs.
+4. Trigger a redeploy on both services. The API exposes `/healthz`; storage-only endpoints work, but job creation will fail until the database is enabled.
+
+### Enabling the database later
+
+Once you're ready to take the system fully live:
+
+1. In `render.yaml`, uncomment the `databases:` block and the two `DATABASE_URL` env vars.
+2. Remove the `SPRING_PROFILES_ACTIVE=nodb` env vars on both services.
+3. Commit/push and trigger a redeploy. Render provisions the DB and rewires `DATABASE_URL` to both services automatically.
 

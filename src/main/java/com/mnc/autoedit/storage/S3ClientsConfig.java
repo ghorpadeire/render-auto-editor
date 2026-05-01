@@ -1,5 +1,6 @@
 package com.mnc.autoedit.storage;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +19,7 @@ import java.net.URI;
 public class S3ClientsConfig {
 
     @Bean
+    @ConditionalOnExpression("'${storage.bucket:}'.length() > 0 and '${storage.access-key:}'.length() > 0 and '${storage.secret-key:}'.length() > 0")
     S3Client s3Client(S3StorageConfig cfg) {
         // region agent log
         DebugNdjson.log(
@@ -47,6 +49,7 @@ public class S3ClientsConfig {
     }
 
     @Bean
+    @ConditionalOnExpression("'${storage.bucket:}'.length() > 0 and '${storage.access-key:}'.length() > 0 and '${storage.secret-key:}'.length() > 0")
     S3Presigner s3Presigner(S3StorageConfig cfg) {
         // region agent log
         DebugNdjson.log(

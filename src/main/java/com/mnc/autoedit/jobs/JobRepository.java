@@ -2,6 +2,7 @@ package com.mnc.autoedit.jobs;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.annotation.Profile;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
+@Profile("!nodb")
 public class JobRepository {
     private final JdbcTemplate jdbc;
     private final ObjectMapper om;

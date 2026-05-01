@@ -12,6 +12,7 @@ import com.mnc.autoedit.storage.S3StorageConfig;
 import com.mnc.autoedit.storage.StorageService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -24,6 +25,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/v1/jobs")
+@Profile("!nodb")
 public class JobsController {
     private final JobRepository jobs;
     private final StorageService storage;
