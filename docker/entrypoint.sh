@@ -15,6 +15,15 @@ if [ -n "${DATABASE_URL:-}" ] && [ -z "${JDBC_DATABASE_URL:-}" ]; then
   export JDBC_DATABASE_PASSWORD="$pass"
 fi
 
+# Auto-activate "nodb" profile when no database is configured,
+# so the app boots cleanly on Render without Postgres provisioned.
+if [ -z "${JDBC_DATABASE_URL:-}" ] && [ -z "${DATABASE_URL:-}" ]; then
+  if [ -z "${SPRING_PROFILES_ACTIVE:-}" ]; then
+    export SPRING_PROFILES_ACTIVE="nodb"
+    echo "No DATABASE_URL or JDBC_DATABASE_URL found — activating 'nodb' profile."
+  fi
+fi
+
 if [ "${APP_ROLE:-api}" = "worker" ]; then
   mkdir -p "$(dirname "${WHISPER_MODEL_PATH}")"
   if [ ! -f "${WHISPER_MODEL_PATH}" ]; then
