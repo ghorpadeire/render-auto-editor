@@ -13,6 +13,7 @@ services:
   - type: web
     name: render-auto-editor-api
     runtime: docker
+    repo: https://github.com/ghorpadeire/render-auto-editor
     plan: starter
     region: oregon
     branch: claude/hermes-reel-analyzer-ZrnlK
@@ -44,6 +45,7 @@ services:
   - type: worker
     name: render-auto-editor-worker
     runtime: docker
+    repo: https://github.com/ghorpadeire/render-auto-editor
     plan: starter
     region: oregon
     branch: claude/hermes-reel-analyzer-ZrnlK
