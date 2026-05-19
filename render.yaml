@@ -15,7 +15,7 @@ services:
     runtime: docker
     plan: starter
     region: oregon
-    branch: main
+    branch: claude/hermes-reel-analyzer-ZrnlK
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
@@ -38,13 +38,15 @@ services:
         sync: false
       - key: STORAGE_SECRET_KEY
         sync: false
+      - key: TRANSCRIBE_API_KEY
+        sync: false
 
   - type: worker
     name: render-auto-editor-worker
     runtime: docker
     plan: starter
     region: oregon
-    branch: main
+    branch: claude/hermes-reel-analyzer-ZrnlK
     dockerfilePath: ./Dockerfile
     dockerContext: .
     envVars:
