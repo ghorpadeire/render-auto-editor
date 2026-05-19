@@ -58,7 +58,7 @@ public class WhisperService {
         JsonNode root = om.readTree(jsonPath.toFile());
         List<WordTimestamp> words = parseWordTimestamps(root);
         if (words.isEmpty()) {
-            throw new RuntimeException("whisper produced 0 parsed words; json keys=" + root.fieldNames().toString());
+            throw new RuntimeException("whisper produced 0 parsed words; json keys=" + fieldNames(root));
         }
         return words;
     }
@@ -68,6 +68,10 @@ public class WhisperService {
         if (root == null) return out;
 
         JsonNode segments = root.get("segments");
+        if (segments == null || !segments.isArray()) {
+            // Newer whisper.cpp JSON-full uses transcription[] instead of segments[].
+            segments = root.get("transcription");
+        }
         if (segments == null || !segments.isArray()) return out;
 
         for (JsonNode seg : segments) {
@@ -75,27 +79,34 @@ public class WhisperService {
             JsonNode words = seg.get("words");
             if (words != null && words.isArray()) {
                 for (JsonNode w : words) {
-                    String text = safeText(w, "word", "text");
-                    Double start = safeDouble(w, "start");
-                    Double end = safeDouble(w, "end");
-                    if (text != null && start != null && end != null && end >= start) {
-                        out.add(new WordTimestamp(text, start, end));
-                    }
+                    addIfValid(out, safeText(w, "word", "text"), safeDouble(w, "start"), safeDouble(w, "end"));
                 }
                 continue;
             }
 
-            // Fallback: tokens with t0/t1 (10ms ticks in whisper.cpp JSON-full)
+            // Fallback: tokens with t0/t1 (10ms ticks in older whisper.cpp JSON-full)
             JsonNode tokens = seg.get("tokens");
             if (tokens != null && tokens.isArray()) {
                 for (JsonNode t : tokens) {
                     String text = t.has("text") ? t.get("text").asText() : t.has("token") ? t.get("token").asText() : null;
                     Double start = ticksToSeconds(safeLong(t, "t0"));
                     Double end = ticksToSeconds(safeLong(t, "t1"));
-                    if (text != null && start != null && end != null && end >= start) {
-                        out.add(new WordTimestamp(text, start, end));
+                    if (start == null || end == null) {
+                        JsonNode offsets = t.get("offsets");
+                        if (offsets != null) {
+                            start = millisToSeconds(safeLong(offsets, "from"));
+                            end = millisToSeconds(safeLong(offsets, "to"));
+                        }
                     }
+                    addIfValid(out, text, start, end);
                 }
+                continue;
+            }
+
+            // Last resort: segment-level text and offsets.
+            JsonNode offsets = seg.get("offsets");
+            if (offsets != null) {
+                addIfValid(out, safeText(seg, "text"), millisToSeconds(safeLong(offsets, "from")), millisToSeconds(safeLong(offsets, "to")));
             }
         }
         return out;
@@ -125,8 +136,28 @@ public class WhisperService {
 
     private static Double ticksToSeconds(Long ticks) {
         if (ticks == null) return null;
-        // whisper.cpp uses 10ms ticks in JSON-full token timestamps
+        // whisper.cpp uses 10ms ticks in older JSON-full token timestamps
         return ticks / 100.0;
+    }
+
+    private static Double millisToSeconds(Long millis) {
+        if (millis == null) return null;
+        return millis / 1000.0;
+    }
+
+    private static void addIfValid(List<WordTimestamp> out, String text, Double start, Double end) {
+        if (text == null || start == null || end == null || end < start) return;
+        String cleaned = text.trim();
+        if (cleaned.isBlank() || cleaned.startsWith("[_")) return;
+        out.add(new WordTimestamp(text, start, end));
+    }
+
+    private static String fieldNames(JsonNode node) {
+        if (node == null) return "[]";
+        List<String> names = new ArrayList<>();
+        Iterator<String> it = node.fieldNames();
+        while (it.hasNext()) names.add(it.next());
+        return names.toString();
     }
 }
 

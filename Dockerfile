@@ -11,6 +11,13 @@ WORKDIR /w
 RUN git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git .
 RUN cmake -S . -B build -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
 RUN cmake --build build -j 2
+# Normalize whisper.cpp output names; ggml patch versions change over time.
+RUN mkdir -p /dist && \
+    cp -L build/bin/whisper-cli /dist/whisper-cli && \
+    cp -L build/src/libwhisper.so.1 /dist/libwhisper.so.1 && \
+    cp -L build/ggml/src/libggml.so.0 /dist/libggml.so.0 && \
+    cp -L build/ggml/src/libggml-base.so.0 /dist/libggml-base.so.0 && \
+    cp -L build/ggml/src/libggml-cpu.so.0 /dist/libggml-cpu.so.0
 
 FROM eclipse-temurin:17-jre-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -19,17 +26,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY --from=build-java /app/target/render-auto-editor-0.1.0.jar /app/app.jar
-COPY --from=build-whisper /w/build/bin/whisper-cli /usr/local/bin/whisper-cli
-COPY --from=build-whisper /w/build/src/libwhisper.so.1.8.4 /usr/local/lib/libwhisper.so.1.8.4
-COPY --from=build-whisper /w/build/ggml/src/libggml.so.0.9.8 /usr/local/lib/libggml.so.0.9.8
-COPY --from=build-whisper /w/build/ggml/src/libggml-base.so.0.9.8 /usr/local/lib/libggml-base.so.0.9.8
-COPY --from=build-whisper /w/build/ggml/src/libggml-cpu.so.0.9.8 /usr/local/lib/libggml-cpu.so.0.9.8
+COPY --from=build-whisper /dist/whisper-cli /usr/local/bin/whisper-cli
+COPY --from=build-whisper /dist/libwhisper.so.1 /usr/local/lib/libwhisper.so.1
+COPY --from=build-whisper /dist/libggml.so.0 /usr/local/lib/libggml.so.0
+COPY --from=build-whisper /dist/libggml-base.so.0 /usr/local/lib/libggml-base.so.0
+COPY --from=build-whisper /dist/libggml-cpu.so.0 /usr/local/lib/libggml-cpu.so.0
 
-RUN ln -sf /usr/local/lib/libwhisper.so.1.8.4 /usr/local/lib/libwhisper.so.1 && \
-    ln -sf /usr/local/lib/libggml.so.0.9.8 /usr/local/lib/libggml.so.0 && \
-    ln -sf /usr/local/lib/libggml-base.so.0.9.8 /usr/local/lib/libggml-base.so.0 && \
-    ln -sf /usr/local/lib/libggml-cpu.so.0.9.8 /usr/local/lib/libggml-cpu.so.0 && \
-    ldconfig
+RUN ldconfig
 
 ENV WHISPER_MODEL_PATH=/opt/models/ggml-base.bin
 ENV WHISPER_MODEL_URL=https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
